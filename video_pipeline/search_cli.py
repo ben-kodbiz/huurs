@@ -14,8 +14,7 @@ def main():
     while True:
         print("Commands:")
         print("  search <query>  - Keyword search")
-        print("  topic <name>    - Search by topic")
-        print("  topics          - List all topics")
+        print("  videos          - List all videos")
         print("  video <id>      - Show video transcripts")
         print("  quit            - Exit")
         print()
@@ -33,16 +32,11 @@ def main():
             results = search.search(query)
             print_results(results)
         
-        elif action == "topic" and len(parts) > 1:
-            topic = parts[1]
-            results = search.search_by_topic(topic)
-            print_results(results)
-        
-        elif action == "topics":
-            topics = search.get_all_topics()
-            print(f"Available topics ({len(topics)}):")
-            for t in topics:
-                print(f"  - {t}")
+        elif action == "videos":
+            videos = search.get_all_videos()
+            print(f"Videos ({len(videos)}):")
+            for v in videos:
+                print(f"  - {v['video_id']}: {v['title']} ({v['channel']})")
         
         elif action == "video" and len(parts) > 1:
             video_id = parts[1]
@@ -50,7 +44,7 @@ def main():
             print_results(results)
         
         else:
-            print("Unknown command. Use 'search', 'topic', 'topics', 'video', or 'quit'.")
+            print("Unknown command. Use 'search', 'videos', 'video', or 'quit'.")
         
         print()
         print("-" * 60)
@@ -72,8 +66,7 @@ def print_results(results):
     for i, r in enumerate(results, 1):
         print(f"[{i}] Video: {r['video_id']}")
         print(f"    Timestamp: {r['timestamp']}")
-        print(f"    Topic: {r['primary_topic']}")
-        print(f"    Summary: {r['summary'][:200]}...")
+        print(f"    Text: {r['text'][:200]}...")
         print()
 
 

@@ -6,6 +6,7 @@ class VideoDB:
 
     def __init__(self):
         self.conn = sqlite3.connect(DATABASE_PATH)
+        self.conn.row_factory = sqlite3.Row
         self.create_tables()
         self.create_fts_index()
 
@@ -27,11 +28,7 @@ class VideoDB:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             video_id TEXT,
             timestamp TEXT,
-            text TEXT,
-            summary TEXT,
-            primary_topic TEXT,
-            secondary_topics TEXT,
-            confidence REAL
+            text TEXT
         )
         """)
 
@@ -48,8 +45,6 @@ class VideoDB:
         cur.execute("""
         CREATE VIRTUAL TABLE IF NOT EXISTS transcript_fts USING fts5(
             text,
-            summary,
-            primary_topic,
             content='transcripts',
             content_rowid='id'
         )
@@ -63,8 +58,8 @@ class VideoDB:
         
         # Rebuild FTS index
         cur.execute("""
-        INSERT INTO transcript_fts(rowid, text, summary, primary_topic)
-        SELECT id, text, summary, primary_topic
+        INSERT INTO transcript_fts(rowid, text)
+        SELECT id, text
         FROM transcripts
         """)
         
@@ -80,22 +75,20 @@ class VideoDB:
 
         self.conn.commit()
 
-    def insert_transcript(self, video_id, timestamp, text, summary, 
-                          primary_topic=None, secondary_topics=None, confidence=None):
+    def insert_transcript(self, video_id, timestamp, text):
         cur = self.conn.cursor()
 
         cur.execute("""
-        INSERT INTO transcripts(video_id,timestamp,text,summary,
-                                primary_topic,secondary_topics,confidence)
-        VALUES(?,?,?,?,?,?,?)
-        """,(video_id,timestamp,text,summary,primary_topic,secondary_topics,confidence))
+        INSERT INTO transcripts(video_id,timestamp,text)
+        VALUES(?,?,?)
+        """,(video_id,timestamp,text))
 
         # Also insert into FTS index
         try:
             cur.execute("""
-            INSERT INTO transcript_fts(rowid, text, summary, primary_topic)
-            VALUES(?, ?, ?, ?)
-            """, (cur.lastrowid, text, summary, primary_topic))
+            INSERT INTO transcript_fts(rowid, text)
+            VALUES(?, ?)
+            """, (cur.lastrowid, text))
         except sqlite3.OperationalError:
             # FTS index might not be ready yet
             pass

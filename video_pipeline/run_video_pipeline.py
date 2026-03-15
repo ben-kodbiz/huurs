@@ -9,13 +9,14 @@ from configs.settings import VIDEO_DIR
 import os
 
 
-def run(source=None, classify=True):
+def run(source=None, classify=True, summarize=True):
     """
     Run the video pipeline.
 
     Args:
         source: YouTube URL or path to local video file
         classify: Whether to classify topics (default True)
+        summarize: Whether to summarize chunks (default True)
     """
 
     if source is None:
@@ -34,8 +35,8 @@ def run(source=None, classify=True):
     parser = SubtitleParser()
     chunker = TranscriptChunker()
     fts = YTFTSIndexer()
-    summarizer = VideoSummarizer()
-    classifier = TopicClassifier()
+    summarizer = VideoSummarizer() if summarize else None
+    classifier = TopicClassifier() if classify else None
     db = VideoDB()
 
     print("[INFO] fetching metadata")
@@ -72,7 +73,12 @@ def run(source=None, classify=True):
 
     chunks = chunker.chunk(transcript)
 
-    print(f"[INFO] summarizing and classifying {len(chunks)} transcript chunks")
+    mode = []
+    if summarize: mode.append("summarizing")
+    if classify: mode.append("classifying")
+    mode_str = " and ".join(mode) if mode else "processing"
+    
+    print(f"[INFO] {mode_str} {len(chunks)} transcript chunks")
 
     for i, chunk in enumerate(chunks):
         text = " ".join([x["text"] for x in chunk])
@@ -80,14 +86,17 @@ def run(source=None, classify=True):
 
         print(f"  Processing chunk {i+1}/{len(chunks)}...")
 
-        summary = summarizer.summarize(text)
+        summary = summarizer.summarize(text) if summarize else text[:200]
         
         # Classify topic
-        classification = classifier.classify(text) if classify else {
-            "primary_topic": None,
-            "secondary_topics": [],
-            "confidence": None
-        }
+        if classify:
+            classification = classifier.classify(text)
+        else:
+            classification = {
+                "primary_topic": None,
+                "secondary_topics": [],
+                "confidence": None
+            }
 
         db.insert_transcript(
             video["video_id"],

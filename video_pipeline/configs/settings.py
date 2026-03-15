@@ -1,5 +1,5 @@
 LMSTUDIO_BASE_URL = "http://localhost:1234/v1"
-MODEL_NAME = "qwen/qwen3.5-9b"
+MODEL_NAME = "qwen/qwen3.5-4b"
 TIMEOUT = 120
 
 # Video directories - can be relative or absolute

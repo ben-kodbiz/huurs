@@ -1,0 +1,7 @@
+httpx
+pytesseract
+pillow
+beautifulsoup4
+requests
+yt-dlp
+sentence-transformers

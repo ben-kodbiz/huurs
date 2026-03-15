@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Islamic Knowledge Harvester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .drop-zone {
+            border: 3px dashed #4a90a4;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone:hover {
+            background: #e8f4f8;
+            border-color: #2d6a7a;
+        }
+
+        .drop-zone.dragover {
+            background: #d0e8f0;
+            border-color: #1a5263;
+            transform: scale(1.02);
+        }
+
+        .drop-zone-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+
+        .drop-zone-text {
+            color: #555;
+            font-size: 1.1rem;
+        }
+
+        .drop-zone-subtext {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        .preview-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4a90a4 0%, #2d6a7a 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(74, 144, 164, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-item {
+            margin-bottom: 20px;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-value {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4a90a4;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4a90a4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffe6e6;
+            border-left-color: #e74c3c;
+            color: #c0392b;
+        }
+
+        .success {
+            border-left-color: #27ae60;
+        }
+
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕌 Islamic Knowledge Harvester</h1>
+        <p class="subtitle">Drag & drop an image to extract Quranic wisdom</p>
+
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-icon">📷</div>
+            <div class="drop-zone-text">Drop your image here</div>
+            <div class="drop-zone-subtext">or click to browse (JPG, PNG)</div>
+        </div>
+
+        <input type="file" id="fileInput" accept="image/*">
+
+        <div class="preview-container" id="previewContainer">
+            <img class="preview-image" id="previewImage" alt="Preview">
+        </div>
+
+        <button class="btn" id="processBtn" disabled>Process Image</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing image... This may take a moment.</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-item">
+                <div class="result-label">📌 Header</div>
+                <div class="result-value" id="header"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">📖 Main Title</div>
+                <div class="result-value" id="mainTitle"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">☪️ Arabic Text</div>
+                <div class="result-value" id="arabicText" style="direction: rtl; text-align: right; font-size: 1.4rem; font-family: 'Traditional Arabic', serif;"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">📝 Translation</div>
+                <div class="result-value" id="translation"></div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">📚 Source</div>
+                <div class="result-value" id="source"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const header = document.getElementById('header');
+        const mainTitle = document.getElementById('mainTitle');
+        const arabicText = document.getElementById('arabicText');
+        const translation = document.getElementById('translation');
+        const source = document.getElementById('source');
+
+        let selectedFile = null;
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Click to upload
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                processBtn.disabled = false;
+                results.classList.remove('show');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Process button
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            loading.classList.add('show');
+            results.classList.remove('show');
+            processBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const t = data.data.text_extraction || {};
+
+                    header.textContent = t.header || '-';
+                    mainTitle.textContent = t.main_title || '-';
+                    arabicText.textContent = t.arabic_text || '-';
+                    translation.textContent = t.translation || '-';
+                    source.textContent = t.source || '-';
+
+                    results.classList.add('show');
+                } else {
+                    header.textContent = `Error: ${data.error}`;
+                    mainTitle.textContent = '-';
+                    arabicText.textContent = '-';
+                    translation.textContent = '-';
+                    source.textContent = '-';
+                    results.classList.add('show');
+                }
+            } catch (error) {
+                header.textContent = `Error: ${error.message}`;
+                mainTitle.textContent = '-';
+                arabicText.textContent = '-';
+                translation.textContent = '-';
+                source.textContent = '-';
+                results.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                processBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

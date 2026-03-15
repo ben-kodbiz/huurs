@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Video files
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+
+# Image files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.webp
+
+# Data files (optional - uncomment if needed)
+# data/*.json
+# data/*.db
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

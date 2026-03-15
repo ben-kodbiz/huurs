@@ -4,12 +4,29 @@ from modules.transcript.transcript_chunker import TranscriptChunker
 from modules.search.ytfs_indexer import YTFTSIndexer
 from modules.llm.video_summarizer import VideoSummarizer
 from database.video_db import VideoDB
+import os
 
 
-def run(url=None):
+def run(source=None):
+    """
+    Run the video pipeline.
+    
+    Args:
+        source: YouTube URL or path to local video file
+    """
 
-    if url is None:
-        url = input("Enter YouTube URL: ")
+    if source is None:
+        # Look for videos in the videos directory
+        videos_dir = "data/videos"
+        if os.path.exists(videos_dir):
+            video_files = [f for f in os.listdir(videos_dir) if f.endswith(('.mp4', '.mkv', '.avi', '.mov'))]
+            if video_files:
+                source = os.path.join(videos_dir, video_files[0])
+                print(f"[INFO] Found local video: {source}")
+            else:
+                source = input("Enter YouTube URL or video file path: ")
+        else:
+            source = input("Enter YouTube URL or video file path: ")
 
     downloader = YTDownloader()
     parser = SubtitleParser()
@@ -20,7 +37,7 @@ def run(url=None):
 
     print("[INFO] fetching metadata")
 
-    video = downloader.fetch_metadata(url)
+    video = downloader.fetch_metadata(source)
 
     db.insert_video(
         video["video_id"],
@@ -29,10 +46,19 @@ def run(url=None):
         video["url"]
     )
 
+    print(f"[INFO] Video: {video['title']}")
+    print(f"[INFO] Channel: {video['channel']}")
+
     print("[INFO] downloading subtitles")
 
-    subtitle_file = downloader.download_subtitles(url)
+    subtitle_file = downloader.download_subtitles(source)
 
+    if subtitle_file is None:
+        print("[!] No subtitles available. Pipeline halted.")
+        print("[HINT] Please provide a video with subtitles or add subtitle file manually.")
+        return
+
+    print(f"[INFO] Subtitle file: {subtitle_file}")
     print("[INFO] indexing subtitles with yt-fts")
 
     fts.index_subtitles(subtitle_file, video["video_id"])
@@ -43,13 +69,13 @@ def run(url=None):
 
     chunks = chunker.chunk(transcript)
 
-    print("[INFO] summarizing transcript chunks")
+    print(f"[INFO] summarizing {len(chunks)} transcript chunks")
 
-    for chunk in chunks:
-
+    for i, chunk in enumerate(chunks):
         text = " ".join([x["text"] for x in chunk])
-
         timestamp = chunk[0]["timestamp"]
+
+        print(f"  Processing chunk {i+1}/{len(chunks)}...")
 
         summary = summarizer.summarize(text)
 

@@ -1,0 +1,45 @@
+# Video files
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+*.flv
+*.wmv
+
+# Image files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.webp
+*.tiff
+
+# Subtitle files (generated or manual)
+*.srt
+*.vtt
+*.ass
+*.ssa
+
+# FTS index (generated)
+data/fts_index/
+
+# Database
+*.db
+*.db-journal
+*.sqlite
+
+# Cache
+__pycache__/
+*.pyc
+*.pyo
+*.cache
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+

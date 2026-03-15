@@ -1,6 +1,7 @@
 """RAG Retriever Module - Search transcript chunks."""
 
 import sqlite3
+import re
 from configs.settings import DATABASE_PATH
 
 
@@ -22,6 +23,9 @@ class Retriever:
         Returns:
             List of transcript chunks with video_id, timestamp, text
         """
+        # Sanitize query for FTS5 - remove special characters
+        query = self._sanitize_query(query)
+        
         cur = self.conn.cursor()
         
         cur.execute("""
@@ -45,6 +49,21 @@ class Retriever:
             })
         
         return results
+    
+    def _sanitize_query(self, query):
+        """Sanitize query string for FTS5."""
+        # Remove FTS5 special characters
+        special_chars = ['"', '*', '-', '+', '~', '(', ')', '<', '>', '@']
+        for char in special_chars:
+            query = query.replace(char, '')
+        
+        # Keep only alphanumeric and spaces
+        query = re.sub(r'[^\w\s]', '', query)
+        
+        # Normalize whitespace
+        query = ' '.join(query.split())
+        
+        return query
     
     def close(self):
         """Close database connection."""

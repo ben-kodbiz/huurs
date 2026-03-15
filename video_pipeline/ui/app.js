@@ -91,7 +91,15 @@ function addAnswer(data) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message assistant';
     
-    let html = `<div>${escapeHtml(data.answer)}</div>`;
+    // Add LLM status indicator
+    let statusBadge = '';
+    if (data.llm_used) {
+        statusBadge = '<div style="font-size:0.75rem;color:#2c5530;margin-bottom:0.5rem;">✨ AI-generated answer</div>';
+    } else {
+        statusBadge = '<div style="font-size:0.75rem;color:#c60;margin-bottom:0.5rem;">📄 Transcript excerpts (LLM unavailable)</div>';
+    }
+    
+    let html = statusBadge + `<div style="white-space:pre-wrap;">${escapeHtml(data.answer)}</div>`;
     
     if (data.sources && data.sources.length > 0) {
         html += '<div class="sources">';

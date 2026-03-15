@@ -11,6 +11,21 @@ class LLMClient:
         self.endpoint = f"{LMSTUDIO_BASE_URL}/chat/completions"
         self.model = MODEL_NAME
         self.timeout = TIMEOUT
+        self._available = None  # Cache availability status
+    
+    def is_available(self):
+        """Check if LLM server is available."""
+        if self._available is not None:
+            return self._available
+            
+        try:
+            client = httpx.Client(timeout=1)  # Very short timeout for quick fallback
+            r = client.get(f"{LMSTUDIO_BASE_URL}/models")
+            self._available = (r.status_code == 200)
+        except:
+            self._available = False
+        
+        return self._available
     
     def ask(self, prompt, system_prompt=None):
         """
@@ -57,12 +72,3 @@ class LLMClient:
             return "Error: LLM request timed out. Please try again."
         except Exception as e:
             return f"Error: LLM request failed - {str(e)}"
-    
-    def is_available(self):
-        """Check if LLM server is available."""
-        try:
-            client = httpx.Client(timeout=5)
-            r = client.get(f"{LMSTUDIO_BASE_URL}/models")
-            return r.status_code == 200
-        except:
-            return False

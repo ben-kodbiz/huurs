@@ -23,6 +23,7 @@ class QuestionRequest(BaseModel):
 class QuestionResponse(BaseModel):
     answer: str
     sources: list
+    llm_used: bool = True
     error: str = None
 
 

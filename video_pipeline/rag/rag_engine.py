@@ -30,19 +30,23 @@ class RAGEngine:
         if not chunks:
             return {
                 "answer": "No lecture content matched your question. Please try rephrasing.",
-                "sources": []
+                "sources": [],
+                "llm_used": False
             }
         
-        # Step 2: Build context
-        context = self.prompt_builder.build_context(chunks)
+        # Step 2: Check if LLM is available
+        llm_available = self.llm.is_available()
         
-        # Step 3: Build prompt
-        prompt = self.prompt_builder.build_prompt(question, context)
+        if llm_available:
+            # Step 3: Build context and get LLM answer
+            context = self.prompt_builder.build_context(chunks)
+            prompt = self.prompt_builder.build_prompt(question, context)
+            answer = self.llm.ask(prompt)
+        else:
+            # Fallback: Return retrieved chunks without LLM
+            answer = self._build_fallback_answer(chunks)
         
-        # Step 4: Get LLM answer
-        answer = self.llm.ask(prompt)
-        
-        # Step 5: Prepare sources
+        # Step 4: Prepare sources
         sources = [
             {
                 "video_id": chunk["video_id"],
@@ -54,8 +58,20 @@ class RAGEngine:
         return {
             "answer": answer,
             "sources": sources,
-            "context_used": context
+            "llm_used": llm_available,
+            "context_used": self.prompt_builder.build_context(chunks) if not llm_available else None
         }
+    
+    def _build_fallback_answer(self, chunks):
+        """Build answer from retrieved chunks when LLM is unavailable."""
+        answer = "[LLM unavailable - Showing retrieved transcript excerpts]\n\n"
+        
+        for i, chunk in enumerate(chunks, 1):
+            answer += f"[{i}] {chunk['video_id']} @ {chunk['timestamp']}\n"
+            answer += f"    \"{chunk['text'][:300]}\"\n\n"
+        
+        answer += f"\nFound {len(chunks)} relevant transcript segments above."
+        return answer
     
     def close(self):
         """Close resources."""

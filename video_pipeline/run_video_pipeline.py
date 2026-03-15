@@ -1,7 +1,7 @@
 from modules.downloader.yt_downloader import YTDownloader
 from modules.transcript.subtitle_parser import SubtitleParser
 from modules.transcript.transcript_chunker import TranscriptChunker
-from modules.search.ytfts_indexer import YTFTSIndexer
+from modules.search.ytfs_indexer import YTFTSIndexer
 from modules.llm.video_summarizer import VideoSummarizer
 from database.video_db import VideoDB
 

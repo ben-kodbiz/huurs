@@ -2,3 +2,5 @@ yt-dlp
 openai
 pydantic
 requests
+pysubs2
+yt-fts

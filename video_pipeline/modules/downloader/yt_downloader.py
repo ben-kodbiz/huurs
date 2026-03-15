@@ -11,7 +11,10 @@ class YTDownloader:
 
     def fetch_metadata(self, url):
         """Fetch video metadata."""
-        opts = {"quiet": True}
+        opts = {
+            "quiet": True,
+            "no_warnings": True
+        }
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -32,20 +35,26 @@ class YTDownloader:
             "writesubtitles": True,
             "writeautomaticsub": False,
             "subtitleslangs": ["en"],
-            "outtmpl": f"{SUBTITLE_DIR}/%(id)s.%(ext)s"
+            "outtmpl": f"{SUBTITLE_DIR}/%(id)s.%(ext)s",
+            "quiet": True,
+            "no_warnings": True
         }
 
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-        except Exception:
+        except Exception as e:
             # Fallback to auto subtitles
-            print("[INFO] Human subtitles not found, trying auto subtitles...")
+            print(f"[INFO] Human subtitles not found, trying auto subtitles...")
             opts["writesubtitles"] = False
             opts["writeautomaticsub"] = True
             
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+            except Exception as e2:
+                print(f"[!] Subtitle download failed: {e2}")
+                raise Exception("Subtitles unavailable. Pipeline halted.")
 
         video_id = info["id"]
 

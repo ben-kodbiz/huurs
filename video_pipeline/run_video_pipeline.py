@@ -6,9 +6,10 @@ from modules.llm.video_summarizer import VideoSummarizer
 from database.video_db import VideoDB
 
 
-def run():
+def run(url=None):
 
-    url = input("Enter YouTube URL: ")
+    if url is None:
+        url = input("Enter YouTube URL: ")
 
     downloader = YTDownloader()
     parser = SubtitleParser()

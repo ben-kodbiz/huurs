@@ -12,7 +12,14 @@ def run(url):
 
     path = download(img,"data/images/poster.jpg")
 
-    text = extract(path)
+    ocr_result = extract(path)
+    
+    # Handle dict response from OCR
+    if isinstance(ocr_result, dict):
+        text_data = ocr_result.get("text_extraction", ocr_result)
+        text = f"{text_data.get('arabic_text', '')} {text_data.get('translation', '')}"
+    else:
+        text = ocr_result
 
     verse = detect(text)
 
@@ -22,7 +29,7 @@ def run(url):
 
     entry={
         "source":url,
-        "text":text,
+        "text":ocr_result,
         "quran_reference":verse,
         "topics":topics,
         "embedding":embedding

@@ -46,22 +46,27 @@ def create_enriched_table():
     conn = sqlite3.connect(DATABASE_PATH)
     cur = conn.cursor()
     
-    # Drop existing table if exists
-    cur.execute("DROP TABLE IF EXISTS enriched_transcripts")
+    # Check if table exists
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='enriched_transcripts'")
+    exists = cur.fetchone()
     
-    # Create enriched table
-    cur.execute("""
-    CREATE TABLE enriched_transcripts(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        video_id TEXT,
-        timestamp TEXT,
-        text TEXT,
-        summary TEXT,
-        topic TEXT
-    )
-    """)
+    if not exists:
+        # Create enriched table
+        cur.execute("""
+        CREATE TABLE enriched_transcripts(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            video_id TEXT,
+            timestamp TEXT,
+            text TEXT,
+            summary TEXT,
+            topic TEXT
+        )
+        """)
+        conn.commit()
+        print("Created enriched_transcripts table")
+    else:
+        print("enriched_transcripts table already exists")
     
-    conn.commit()
     return conn
 
 

@@ -3,17 +3,19 @@ from modules.transcript.subtitle_parser import SubtitleParser
 from modules.transcript.transcript_chunker import TranscriptChunker
 from modules.search.ytfs_indexer import YTFTSIndexer
 from modules.llm.video_summarizer import VideoSummarizer
+from modules.llm.topic_classifier import TopicClassifier
 from database.video_db import VideoDB
 from configs.settings import VIDEO_DIR
 import os
 
 
-def run(source=None):
+def run(source=None, classify=True):
     """
     Run the video pipeline.
-    
+
     Args:
         source: YouTube URL or path to local video file
+        classify: Whether to classify topics (default True)
     """
 
     if source is None:
@@ -33,6 +35,7 @@ def run(source=None):
     chunker = TranscriptChunker()
     fts = YTFTSIndexer()
     summarizer = VideoSummarizer()
+    classifier = TopicClassifier()
     db = VideoDB()
 
     print("[INFO] fetching metadata")
@@ -69,7 +72,7 @@ def run(source=None):
 
     chunks = chunker.chunk(transcript)
 
-    print(f"[INFO] summarizing {len(chunks)} transcript chunks")
+    print(f"[INFO] summarizing and classifying {len(chunks)} transcript chunks")
 
     for i, chunk in enumerate(chunks):
         text = " ".join([x["text"] for x in chunk])
@@ -78,13 +81,26 @@ def run(source=None):
         print(f"  Processing chunk {i+1}/{len(chunks)}...")
 
         summary = summarizer.summarize(text)
+        
+        # Classify topic
+        classification = classifier.classify(text) if classify else {
+            "primary_topic": None,
+            "secondary_topics": [],
+            "confidence": None
+        }
 
         db.insert_transcript(
             video["video_id"],
             timestamp,
             text,
-            summary
+            summary,
+            primary_topic=classification["primary_topic"],
+            secondary_topics=",".join(classification["secondary_topics"]),
+            confidence=classification["confidence"]
         )
+
+    # Rebuild FTS index after all inserts
+    db.rebuild_fts_index()
 
     print("[✓] pipeline completed")
 

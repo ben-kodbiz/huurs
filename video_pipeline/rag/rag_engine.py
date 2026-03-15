@@ -1,31 +1,31 @@
 """RAG Engine - Combine retrieval and LLM reasoning."""
 
-from rag.retriever import Retriever
+from rag.hybrid_retriever import HybridRetriever
 from rag.prompt_builder import PromptBuilder
 from rag.llm_client import LLMClient
 
 
 class RAGEngine:
     """Main RAG engine for answering questions."""
-    
+
     def __init__(self):
-        self.retriever = Retriever()
+        self.retriever = HybridRetriever()
         self.prompt_builder = PromptBuilder()
         self.llm = LLMClient()
-    
+
     def answer_question(self, question, limit=10):
         """
         Answer a question using RAG.
-        
+
         Args:
             question: User's question
             limit: Number of transcript chunks to retrieve
-            
+
         Returns:
             Dict with answer and sources
         """
         # Step 1: Retrieve relevant transcripts
-        chunks = self.retriever.search_transcripts(question, limit)
+        chunks = self.retriever.search(question, limit)
         
         if not chunks:
             return {

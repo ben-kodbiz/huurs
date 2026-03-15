@@ -65,14 +65,14 @@ def create_enriched_table():
     return conn
 
 
-def get_chunks(conn, limit=20):
+def get_chunks(conn, limit=20, offset=0):
     """Get transcript chunks to enrich."""
     cur = conn.cursor()
     cur.execute("""
     SELECT id, video_id, timestamp, text
     FROM transcripts
-    LIMIT ?
-    """, (limit,))
+    LIMIT ? OFFSET ?
+    """, (limit, offset))
     
     return cur.fetchall()
 
@@ -104,6 +104,11 @@ def enrich_chunk(llm, text):
 
 def main():
     """Main enrichment process."""
+    import sys
+    
+    limit = int(sys.argv[1]) if len(sys.argv) > 1 else 20
+    offset = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    
     print("=" * 60)
     print("Transcript Enrichment Pipeline")
     print("=" * 60)
@@ -126,8 +131,8 @@ def main():
     print()
     
     # Get chunks to process
-    print("[3] Loading transcript chunks...")
-    chunks = get_chunks(conn, limit=20)
+    print(f"[3] Loading transcript chunks (limit={limit}, offset={offset})...")
+    chunks = get_chunks(conn, limit=limit, offset=offset)
     print(f"    Selected {len(chunks)} chunks for enrichment")
     print()
     

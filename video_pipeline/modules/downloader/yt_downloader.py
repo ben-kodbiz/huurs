@@ -6,12 +6,11 @@ from configs.settings import VIDEO_DIR, SUBTITLE_DIR
 class YTDownloader:
 
     def __init__(self):
-
         os.makedirs(VIDEO_DIR, exist_ok=True)
         os.makedirs(SUBTITLE_DIR, exist_ok=True)
 
     def fetch_metadata(self, url):
-
+        """Fetch video metadata."""
         opts = {"quiet": True}
 
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -24,27 +23,39 @@ class YTDownloader:
             "url": url
         }
 
-
     def download_subtitles(self, url):
-
+        """Download subtitles (priority: human > auto)."""
+        
+        # Try human subtitles first
         opts = {
             "skip_download": True,
             "writesubtitles": True,
-            "writeautomaticsub": True,
+            "writeautomaticsub": False,
             "subtitleslangs": ["en"],
             "outtmpl": f"{SUBTITLE_DIR}/%(id)s.%(ext)s"
         }
 
-        with yt_dlp.YoutubeDL(opts) as ydl:
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+        except Exception:
+            # Fallback to auto subtitles
+            print("[INFO] Human subtitles not found, trying auto subtitles...")
+            opts["writesubtitles"] = False
+            opts["writeautomaticsub"] = True
+            
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=True)
 
-            info = ydl.extract_info(url, download=True)
+        video_id = info["id"]
 
-            video_id = info["id"]
-
+        # Check for subtitle file (vtt format)
         sub_vtt = f"{SUBTITLE_DIR}/{video_id}.en.vtt"
+        sub_srt = f"{SUBTITLE_DIR}/{video_id}.en.srt"
 
-        if not os.path.exists(sub_vtt):
-
+        if os.path.exists(sub_vtt):
+            return sub_vtt
+        elif os.path.exists(sub_srt):
+            return sub_srt
+        else:
             raise Exception("Subtitles unavailable. Pipeline halted.")
-
-        return sub_vtt

@@ -4,6 +4,7 @@ from modules.transcript.transcript_chunker import TranscriptChunker
 from modules.search.ytfs_indexer import YTFTSIndexer
 from modules.llm.video_summarizer import VideoSummarizer
 from database.video_db import VideoDB
+from configs.settings import VIDEO_DIR
 import os
 
 
@@ -17,11 +18,10 @@ def run(source=None):
 
     if source is None:
         # Look for videos in the videos directory
-        videos_dir = "data/videos"
-        if os.path.exists(videos_dir):
-            video_files = [f for f in os.listdir(videos_dir) if f.endswith(('.mp4', '.mkv', '.avi', '.mov'))]
+        if os.path.exists(VIDEO_DIR):
+            video_files = [f for f in os.listdir(VIDEO_DIR) if f.endswith(('.mp4', '.mkv', '.avi', '.mov'))]
             if video_files:
-                source = os.path.join(videos_dir, video_files[0])
+                source = os.path.join(VIDEO_DIR, video_files[0])
                 print(f"[INFO] Found local video: {source}")
             else:
                 source = input("Enter YouTube URL or video file path: ")

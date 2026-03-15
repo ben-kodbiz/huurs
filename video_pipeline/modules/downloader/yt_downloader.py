@@ -14,22 +14,14 @@ class YTDownloader:
         
         # Check if it's a local file
         if os.path.exists(url_or_path):
-            video_path = url_or_path
+            video_path = os.path.abspath(url_or_path)
             video_id = os.path.splitext(os.path.basename(video_path))[0]
             
-            # Try to get metadata using yt-dlp
-            opts = {
-                "quiet": True,
-                "no_warnings": True
-            }
-            
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(video_path, download=False)
-            
+            # For local files, use filename as title
             return {
                 "video_id": video_id,
-                "title": info.get("title", video_id),
-                "channel": info.get("channel", "Local Video"),
+                "title": video_id,
+                "channel": "Local Video",
                 "url": video_path,
                 "is_local": True
             }
@@ -56,42 +48,27 @@ class YTDownloader:
         
         # For local files, check if subtitle already exists
         if os.path.exists(url_or_path):
-            video_path = url_or_path
+            video_path = os.path.abspath(url_or_path)
             video_id = os.path.splitext(os.path.basename(video_path))[0]
             
-            # Check for existing subtitle
-            sub_vtt = f"{SUBTITLE_DIR}/{video_id}.en.vtt"
-            sub_srt = f"{SUBTITLE_DIR}/{video_id}.en.srt"
+            # Check for existing subtitle in multiple locations
+            video_dir = os.path.dirname(video_path)
+            possible_subs = [
+                f"{video_dir}/{video_id}.en.vtt",
+                f"{video_dir}/{video_id}.en.srt",
+                f"{video_dir}/{video_id}.vtt",
+                f"{video_dir}/{video_id}.srt",
+                f"{SUBTITLE_DIR}/{video_id}.en.vtt",
+                f"{SUBTITLE_DIR}/{video_id}.en.srt",
+            ]
             
-            if os.path.exists(sub_vtt):
-                return sub_vtt
-            elif os.path.exists(sub_srt):
-                return sub_srt
-            
-            # Try to extract subtitles from local file
-            opts = {
-                "skip_download": True,
-                "writesubtitles": True,
-                "writeautomaticsub": False,
-                "subtitleslangs": ["en"],
-                "outtmpl": f"{SUBTITLE_DIR}/%(id)s.%(ext)s",
-                "quiet": True,
-                "no_warnings": True
-            }
-            
-            try:
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    info = ydl.extract_info(video_path, download=False)
-                    
-                # Check again after extraction attempt
-                if os.path.exists(sub_vtt):
-                    return sub_vtt
-                elif os.path.exists(sub_srt):
-                    return sub_srt
-            except Exception:
-                pass
+            for sub_file in possible_subs:
+                if os.path.exists(sub_file):
+                    print(f"[INFO] Found subtitle: {sub_file}")
+                    return sub_file
             
             # If no subtitle found, return None (pipeline will handle)
+            print(f"[INFO] No subtitle found for {video_id}")
             return None
         
         # For YouTube URLs

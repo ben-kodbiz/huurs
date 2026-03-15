@@ -36,16 +36,18 @@ class RAGEngine:
         
         # Step 2: Check if LLM is available
         llm_available = self.llm.is_available()
-        
+
         if llm_available:
             # Step 3: Build context and get LLM answer
             context = self.prompt_builder.build_context(chunks)
             prompt = self.prompt_builder.build_prompt(question, context)
             answer = self.llm.ask(prompt)
+            llm_used = True
         else:
             # Fallback: Return retrieved chunks without LLM
             answer = self._build_fallback_answer(chunks)
-        
+            llm_used = False
+
         # Step 4: Prepare sources
         sources = [
             {
@@ -54,12 +56,11 @@ class RAGEngine:
             }
             for chunk in chunks
         ]
-        
+
         return {
             "answer": answer,
             "sources": sources,
-            "llm_used": llm_available,
-            "context_used": self.prompt_builder.build_context(chunks) if not llm_available else None
+            "llm_used": llm_used
         }
     
     def _build_fallback_answer(self, chunks):

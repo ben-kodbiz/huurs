@@ -29,17 +29,19 @@ async function askQuestion(question) {
         chatContainer.innerHTML = '';
         hasMessages = true;
     }
-    
+
     // Add user message
     addMessage(question, 'user');
-    
+
     // Disable input while loading
     setLoading(true);
-    
+
     // Add loading message
     const loadingId = addMessage('<span class="loading"></span> Thinking...', 'assistant', 'loading');
-    
+
     try {
+        console.log('[RAG] Sending question:', question);
+        
         const response = await fetch('/ask', {
             method: 'POST',
             headers: {
@@ -50,27 +52,32 @@ async function askQuestion(question) {
                 limit: 10
             })
         });
-        
+
+        console.log('[RAG] Response status:', response.status);
+
         if (!response.ok) {
             throw new Error(`Server error: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+        console.log('[RAG] Response data:', data);
+
         // Remove loading message
         removeMessage(loadingId);
-        
+
         // Add answer
         addAnswer(data);
-        
+
     } catch (error) {
+        console.error('[RAG] Error:', error);
+        
         // Remove loading message
         removeMessage(loadingId);
-        
+
         // Add error message
         addMessage(`Error: ${error.message}`, 'error');
     }
-    
+
     setLoading(false);
     questionInput.focus();
 }

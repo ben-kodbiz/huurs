@@ -3,11 +3,21 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from rag.rag_engine import RAGEngine
 from modules.search.enriched_search import EnrichedSearch
 
 app = FastAPI(title="Video RAG API")
+
+# Enable CORS for web UI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mount static files for UI
 app.mount("/ui", StaticFiles(directory="ui"), name="ui")
@@ -45,7 +55,7 @@ async def enriched_ui():
 async def ask_question(request: QuestionRequest):
     """
     Ask a question about the lecture videos.
-    
+
     Returns an answer based on transcript content.
     """
     try:
@@ -53,13 +63,17 @@ async def ask_question(request: QuestionRequest):
             question=request.question,
             limit=request.limit
         )
-        
+
         return QuestionResponse(
             answer=result["answer"],
-            sources=result["sources"]
+            sources=result["sources"],
+            llm_used=result.get("llm_used", False)
         )
-        
+
     except Exception as e:
+        import traceback
+        print(f"Error in /ask: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 

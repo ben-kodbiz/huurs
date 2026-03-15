@@ -52,17 +52,26 @@ class Retriever:
     
     def _sanitize_query(self, query):
         """Sanitize query string for FTS5."""
-        # Remove FTS5 special characters
-        special_chars = ['"', '*', '-', '+', '~', '(', ')', '<', '>', '@']
+        # Replace hyphens with spaces (e.g., "ar-rahman" -> "ar rahman")
+        query = query.replace('-', ' ')
+        
+        # Remove FTS5 special characters that could break queries
+        special_chars = ['"', '*', '+', '~', '(', ')', '<', '>', '@']
         for char in special_chars:
             query = query.replace(char, '')
-        
+
         # Keep only alphanumeric and spaces
         query = re.sub(r'[^\w\s]', '', query)
-        
+
         # Normalize whitespace
-        query = ' '.join(query.split())
+        words = query.split()
         
+        # Join words with OR for better recall
+        if len(words) > 1:
+            query = ' OR '.join(words)
+        else:
+            query = ' '.join(words)
+
         return query
     
     def close(self):

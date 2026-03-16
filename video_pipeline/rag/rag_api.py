@@ -1,4 +1,7 @@
-"""RAG API - FastAPI web service."""
+"""RAG API - FastAPI web service.
+
+Supports per-video databases with multi-video search capability.
+"""
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
@@ -6,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from rag.rag_engine import RAGEngine
-from modules.search.enriched_search import EnrichedSearch
+from rag.hybrid_retriever import HybridRetriever
 
 app = FastAPI(title="Video RAG API")
 
@@ -22,14 +25,14 @@ app.add_middleware(
 # Mount static files for UI
 app.mount("/ui", StaticFiles(directory="ui"), name="ui")
 
-# Initialize RAG engine
+# Initialize RAG engine (searches all videos by default)
 rag_engine = RAGEngine()
-enriched_search = EnrichedSearch()
 
 
 class QuestionRequest(BaseModel):
     question: str
     limit: int = 10
+    video_id: str = None  # Optional: search specific video
 
 
 class QuestionResponse(BaseModel):
@@ -45,10 +48,13 @@ async def root():
     return FileResponse("ui/index.html")
 
 
-@app.get("/enriched")
-async def enriched_ui():
-    """Enriched transcripts UI."""
-    return FileResponse("ui/enriched.html")
+@app.get("/videos")
+async def get_videos():
+    """Get list of all available videos with stats."""
+    retriever = HybridRetriever()
+    videos = retriever.get_all_videos()
+    retriever.close()
+    return videos
 
 
 @app.post("/ask", response_model=QuestionResponse)
@@ -57,17 +63,61 @@ async def ask_question(request: QuestionRequest):
     Ask a question about the lecture videos.
 
     Returns an answer based on transcript content.
+    
+    Args:
+        question: User's question
+        limit: Number of results to retrieve
+        video_id: Optional. Search specific video only.
     """
     try:
-        result = rag_engine.answer_question(
-            question=request.question,
-            limit=request.limit
-        )
+        # Use video-specific retriever if video_id provided
+        if request.video_id:
+            retriever = HybridRetriever(video_id=request.video_id)
+            chunks = retriever.search(request.question, request.limit)
+            retriever.close()
+        else:
+            # Search all videos
+            chunks = rag_engine.answer_question(
+                question=request.question,
+                limit=request.limit,
+                return_chunks_only=True
+            )
+
+        if not chunks:
+            return QuestionResponse(
+                answer="No lecture content matched your question. Please try rephrasing.",
+                sources=[],
+                llm_used=False
+            )
+
+        # Check if LLM is available
+        llm_available = rag_engine.llm.is_available()
+
+        if llm_available:
+            # Build context and get LLM answer
+            context = rag_engine.prompt_builder.build_context(chunks)
+            prompt = rag_engine.prompt_builder.build_prompt(request.question, context)
+            answer = rag_engine.llm.ask(prompt)
+            llm_used = True
+        else:
+            # Fallback: Return retrieved chunks without LLM
+            answer = rag_engine._build_fallback_answer(chunks)
+            llm_used = False
+
+        # Prepare sources
+        sources = [
+            {
+                "video_id": chunk.get("video_id", "Unknown"),
+                "video_title": chunk.get("video_title", ""),
+                "timestamp": chunk["timestamp"]
+            }
+            for chunk in chunks
+        ]
 
         return QuestionResponse(
-            answer=result["answer"],
-            sources=result["sources"],
-            llm_used=result.get("llm_used", False)
+            answer=answer,
+            sources=sources,
+            llm_used=llm_used
         )
 
     except Exception as e:

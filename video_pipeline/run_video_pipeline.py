@@ -3,13 +3,15 @@ Video Pipeline - Offline Mode
 
 Pipeline flow:
     video → subtitle → chunk transcript → store chunks → build search index
+    
+Each video gets its own database for clean segregation.
 """
 
 from modules.downloader.yt_downloader import YTDownloader
 from modules.transcript.subtitle_parser import SubtitleParser
 from modules.transcript.transcript_chunker import TranscriptChunker
 from modules.search.ytfs_indexer import YTFTSIndexer
-from database.video_db import VideoDB
+from database.per_video_db import PerVideoDB
 from configs.settings import VIDEO_DIR
 import os
 
@@ -39,12 +41,14 @@ def run(source=None):
     parser = SubtitleParser()
     chunker = TranscriptChunker()
     fts = YTFTSIndexer()
-    db = VideoDB()
 
     # Step 1: Fetch metadata
     print("[INFO] fetching metadata")
     video = downloader.fetch_metadata(source)
 
+    # Initialize per-video database
+    db = PerVideoDB(video["video_id"])
+    
     db.insert_video(
         video["video_id"],
         video["title"],
@@ -54,6 +58,7 @@ def run(source=None):
 
     print(f"[INFO] Video: {video['title']}")
     print(f"[INFO] Channel: {video['channel']}")
+    print(f"[INFO] Database: {db.db_path}")
 
     # Step 2: Download/locate subtitles
     print("[INFO] downloading subtitles")
@@ -62,6 +67,7 @@ def run(source=None):
     if subtitle_file is None:
         print("[!] No subtitles available. Pipeline halted.")
         print("[HINT] Please provide a video with subtitles or add subtitle file manually.")
+        db.close()
         return
 
     print(f"[INFO] Subtitle file: {subtitle_file}")
@@ -93,9 +99,12 @@ def run(source=None):
 
     # Step 7: Rebuild search index
     print("[INFO] building search index")
-    db.rebuild_fts_index()
+    db.create_fts_index()
 
-    print("[✓] pipeline completed")
+    print(f"[✓] pipeline completed")
+    print(f"[INFO] Database location: {db.db_path}")
+    
+    db.close()
 
 
 if __name__ == "__main__":

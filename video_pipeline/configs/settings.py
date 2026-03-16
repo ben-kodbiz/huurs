@@ -6,5 +6,7 @@ TIMEOUT = 120
 VIDEO_DIR = "videos"
 SUBTITLE_DIR = "data/subtitles"
 FTS_INDEX_DIR = "data/fts_index"
+DATA_DIR = "data"
 
+# Legacy single database (for backward compatibility)
 DATABASE_PATH = "video_knowledge.db"

@@ -1,0 +1,440 @@
+# Google GPU Colab Integration
+
+File: GoogleGPUcolab.md
+
+## Purpose
+
+This document specifies how to integrate **Google Colab GPU processing** into the existing video pipeline.
+
+The goal is to offload heavy LLM tasks to Google Colab while keeping the main system local.
+
+Tasks executed in Colab:
+
+* transcript summarization
+* transcript classification
+* optional embeddings generation
+
+Tasks executed locally:
+
+* video downloading
+* subtitle extraction
+* transcript chunking
+* SQLite database storage
+* search engine
+* RAG answering system
+
+LLM models used:
+
+Worker model:
+Qwen3.5-4B
+
+Thinker model:
+Qwen3.5-9B (local RAG only)
+
+---
+
+# System Architecture
+
+Local pipeline and Colab pipeline cooperate through JSON files.
+
+Workflow:
+
+Local machine
+↓
+download subtitles
+↓
+chunk transcripts
+↓
+export chunks.json
+↓
+upload to Colab
+↓
+GPU summarization/classification
+↓
+download processed_chunks.json
+↓
+import into SQLite database
+↓
+RAG search system
+
+---
+
+# Directory Structure
+
+Create the following directories.
+
+project_root/
+
+video_pipeline/
+
+colab/
+
+```
+export_chunks.py
+import_results.py
+```
+
+database/
+
+```
+videos.db
+```
+
+colab_notebook/
+
+```
+colab_pipeline.ipynb
+```
+
+docs/
+
+```
+GoogleGPUcolab.md
+```
+
+---
+
+# Database Schema (Existing)
+
+Table: transcripts
+
+Fields:
+
+id INTEGER PRIMARY KEY
+video_id TEXT
+timestamp TEXT
+text TEXT
+summary TEXT
+primary_topic TEXT
+confidence REAL
+
+FTS table:
+
+transcript_fts
+
+---
+
+# Step 1: Export Chunks For Colab
+
+File:
+
+colab/export_chunks.py
+
+Purpose:
+
+Export transcript chunks that do not yet have summaries.
+
+Example code:
+
+```python
+import sqlite3
+import json
+
+conn = sqlite3.connect("database/videos.db")
+
+rows = conn.execute("""
+SELECT id, video_id, timestamp, text
+FROM transcripts
+WHERE summary IS NULL
+""").fetchall()
+
+chunks = []
+
+for r in rows:
+    chunks.append({
+        "id": r[0],
+        "video_id": r[1],
+        "timestamp": r[2],
+        "text": r[3]
+    })
+
+with open("chunks.json","w") as f:
+    json.dump(chunks,f,indent=2)
+
+print("Exported",len(chunks),"chunks")
+```
+
+Output file:
+
+chunks.json
+
+Upload this file to Colab.
+
+---
+
+# Step 2: Setup Colab Environment
+
+Open a new notebook:
+
+colab_pipeline.ipynb
+
+Enable GPU runtime.
+
+Install dependencies:
+
+```python
+!pip install transformers accelerate bitsandbytes
+!pip install sentencepiece
+```
+
+---
+
+# Step 3: Load Worker Model
+
+Load the summarization/classification model.
+
+Model:
+
+Qwen3.5-4B
+
+Example:
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+model_name = "Qwen/Qwen2.5-4B-Instruct"
+
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=torch.float16,
+    device_map="auto"
+)
+```
+
+The model will run on the Colab GPU.
+
+---
+
+# Step 4: Load Transcript Chunks
+
+Upload the file:
+
+chunks.json
+
+Example:
+
+```python
+import json
+
+with open("chunks.json") as f:
+    chunks = json.load(f)
+```
+
+---
+
+# Step 5: Batch Processing
+
+Process transcripts in batches to maximize GPU efficiency.
+
+Example batch size:
+
+8
+
+Pseudo code:
+
+```python
+results = []
+
+batch_size = 8
+
+for i in range(0,len(chunks),batch_size):
+
+    batch = chunks[i:i+batch_size]
+
+    for item in batch:
+
+        text = item["text"]
+
+        prompt = f"""
+Summarize the following lecture segment in one sentence.
+
+Then classify its main topic.
+
+Return JSON:
+
+{{
+ "summary": "",
+ "topic": "",
+ "confidence": 0.0
+}}
+
+Text:
+{text}
+"""
+
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+
+        outputs = model.generate(**inputs,max_new_tokens=120)
+
+        result = tokenizer.decode(outputs[0],skip_special_tokens=True)
+
+        item["llm_output"] = result
+
+        results.append(item)
+```
+
+---
+
+# Step 6: Save Processed Results
+
+Save processed data:
+
+```python
+import json
+
+with open("processed_chunks.json","w") as f:
+    json.dump(results,f,indent=2)
+```
+
+Download file:
+
+```python
+from google.colab import files
+files.download("processed_chunks.json")
+```
+
+---
+
+# Step 7: Import Results Into Local Database
+
+File:
+
+colab/import_results.py
+
+Purpose:
+
+Update SQLite database with summaries and topics.
+
+Example code:
+
+```python
+import json
+import sqlite3
+
+conn = sqlite3.connect("database/videos.db")
+
+with open("processed_chunks.json") as f:
+    data = json.load(f)
+
+for item in data:
+
+    summary = item["llm_output"]
+
+    conn.execute("""
+    UPDATE transcripts
+    SET summary = ?
+    WHERE id = ?
+    """,(summary,item["id"]))
+
+conn.commit()
+print("Database updated")
+```
+
+---
+
+# Step 8: Rebuild Search Index
+
+After updating the database, rebuild the FTS index.
+
+Example SQL:
+
+```sql
+INSERT INTO transcript_fts(rowid,text)
+SELECT id,text FROM transcripts
+WHERE rowid NOT IN (SELECT rowid FROM transcript_fts);
+```
+
+This ensures new data becomes searchable.
+
+---
+
+# Step 9: RAG System Usage
+
+The RAG system runs locally using:
+
+Qwen3.5-9B
+
+Workflow:
+
+User question
+↓
+FTS search retrieves transcript chunks
+↓
+context built from chunks
+↓
+LLM generates explanation
+
+This uses the existing RAG pipeline.
+
+No changes required.
+
+---
+
+# Example End-to-End Workflow
+
+1 download lecture subtitles locally
+
+2 run transcript chunking
+
+3 run export_chunks.py
+
+4 upload chunks.json to Colab
+
+5 run GPU summarization notebook
+
+6 download processed_chunks.json
+
+7 run import_results.py
+
+8 run RAG server locally
+
+System ready.
+
+---
+
+# Performance Expectations
+
+Typical transcript:
+
+200 chunks
+
+CPU processing:
+
+20 minutes
+
+Colab GPU processing:
+
+2–4 minutes
+
+---
+
+# Error Handling
+
+Possible issues:
+
+Colab runtime reset
+model download failure
+invalid JSON output
+
+Recommended safeguards:
+
+store intermediate results in Google Drive
+validate JSON before database insertion
+
+---
+
+# Completion Criteria
+
+The integration is successful when:
+
+chunks exported correctly
+Colab processes transcripts
+processed results imported into SQLite
+RAG system answers questions using summarized transcripts
+
+Final log entry:
+
+[✓] Google Colab GPU pipeline operational

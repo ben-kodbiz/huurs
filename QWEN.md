@@ -1,2 +1,4 @@
 ## Qwen Added Memories
 - For /mnt/AI/dev/huurs project: Always activate the virtual environment (.venv) when entering this project directory. The venv was created with uv at /mnt/AI/dev/huurs/.venv. Prevent duplicate installations by checking if .venv exists before creating/installing.
+- For /mnt/AI/dev/huurs project: NEVER use local clip mining pipeline without LLM (keyword-based only) - quality is terrible. ALWAYS use Google Colab GPU or other free GPU providers for AI-powered clip mining. Only the Colab notebook with LLM (Qwen2.5-3B or Qwen3.5-4B) produces acceptable quality results. Local pipeline should only be used for non-AI tasks like database management and ffmpeg extraction.
+- For /mnt/AI/dev/huurs project: NEVER allow hardcoded secrets (API keys, tokens, passwords) in any code files. All secrets must use environment variables via .env file (template in .env.example). This is a permanent rule - always scan for secrets before pushing to GitHub.

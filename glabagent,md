@@ -1,0 +1,76 @@
+Googlecolab.md
+
+Optimized template for agentic code projects (like automation, scraping, AI agents)
+
+# Google Colab Agentic Code Template
+
+## 1. Environment Setup
+```python
+# Mount Google Drive for persistent storage
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Check GPU
+!nvidia-smi
+
+# Upgrade pip and essential packages
+%pip install --upgrade pip --quiet
+%pip install torch torchvision torchaudio --quiet
+%pip install transformers accelerate datasets --quiet
+%pip install uv --quiet  # If using your agentic environment
+2. Session & Resource Management
+import torch
+
+# Check available device
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f'Running on {device}')
+
+# Memory optimization
+torch.cuda.empty_cache()
+
+# Optional: limit PyTorch threads for better CPU/GPU handling
+torch.set_num_threads(4)
+3. Agentic Code Setup
+# Clone your agent repository (if any)
+!git clone https://github.com/username/agentic_project.git
+%cd agentic_project
+
+# Install dependencies from requirements
+%pip install -r requirements.txt --quiet
+4. Data Handling
+# Example: loading dataset in chunks
+import pandas as pd
+
+chunksize = 100_000
+for chunk in pd.read_csv('/content/drive/MyDrive/data/largefile.csv', chunksize=chunksize):
+    process(chunk)  # replace with your processing function
+5. Efficient Model Loading
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model_name = "Qwen/Qwen-3.5-35B"  # replace with your model
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
+6. Long-running Jobs & Checkpoints
+# Save intermediate results
+model.save_pretrained("/content/drive/MyDrive/agentic_checkpoints/model_checkpoint")
+
+# For long loops
+for i, data in enumerate(data_loader):
+    output = model(data)
+    if i % 100 == 0:
+        print(f"Step {i} completed")
+7. Avoid Colab Disconnects
+
+Split long jobs into chunks.
+
+Save to Google Drive frequently.
+
+Use nohup style background processes if needed (advanced).
+
+8. Extras & Tips
+
+Use %time and %timeit to profile heavy computations.
+
+Consider accelerate for multi-GPU support (if you upgrade later).
+
+Always delete unused variables and empty GPU cache.

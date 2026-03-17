@@ -48,3 +48,10 @@ Thumbs.db
 .env.*.local
 *.env
 .huggingface/token
+
+# Database files (generated)
+*.db
+database/
+video_pipeline/chunks*.json
+video_pipeline/processed_chunks.json
+video_pipeline/docs/
